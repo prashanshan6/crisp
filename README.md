@@ -13,10 +13,11 @@ Run on WSL2 (Ubuntu) on a laptop. Build phase stops via saturation detection.
 
 | n | R | k | T reached | build time | recon time | build peak RSS | recon peak cache | cache max config | k range found |
 |---|---|---|---|---|---|---|---|---|---|
-| 1000 | 10^5 | 500 | step 707 | 2.3s | 1.9s | 2.0 MB | 514.7 KB | 1000 MB | 642..645 |
-| 1000 | 10^6 | 500 | step 691 | 2.6s | 2.1s | 2.0 MB | 5.1 MB | 1000 MB | 629..632 |
-| 1000 | 10^8 | 500 | step 708 | 36.3s | 13.8s | 8.9 MB | 782.8 MB | 1000 MB | 649..650 |
-| 1000 | 10^9 | 500 | step 691 | 6.5min | 2.6min | 67.0 MB | 1.00 GB* | 1000 MB | 627..633 |
+| 1000 | 10^5 | 500 | step 707 | 3.3s | 2.7s | 2.0 MB | 622.9 KB | 1000 MB | 282..286 |
+| 1000 | 10^6 | 500 | step 691 | 3.8s | 2.9s | 2.0 MB | 6.3 MB | 1000 MB | 293..296 |
+| 1000 | 10^7 | 500 | step 706 | 6.9s | 3.9s | 2.5 MB | 80.9 MB | 1000 MB | 294..298 |
+| 1000 | 10^8 | 500 | step 708 | 42.7s | 18.1s | 9.7 MB | 944.5 MB | 1000 MB | 294..299 |
+| 1000 | 10^9 | 500 | step 691 | 7.5min | 15.6min | 67.7 MB | 2.96 GB | 3000 MB | 294..298 |
 | 1000 | 10^10 | Running... | Running... | Running... | Running... | Running... | Running... | 3000 MB | Running... |
 
 \* At R=10^9 the cache budget (`--cache-mb 1000`) became binding — 607 cache evictions occurred during reconstruction. Smaller cache budgets would still produce correct results but with more disk re-reads.
