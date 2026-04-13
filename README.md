@@ -6,6 +6,28 @@ CRISP can solve random subset sum instances of n=1000 with values up to 10^10 on
 
 This is research code from a long-running independent project on subset sum. It is provided as-is for evaluation, benchmarking, and integration into other algorithms or tooling.
 
+## Benchmarks
+
+All runs use n=1000, k=500 (planted), `--limit 10 --mem 1300 --cache-mb 1000`.
+Run on WSL2 (Ubuntu) on a laptop. Build phase stops via saturation detection.
+
+| n | R | k | T reached | build time | recon time | build peak RSS | recon peak cache | cache max config | k range found |
+|---|---|---|---|---|---|---|---|---|---|
+| 1000 | 10^5 | 500 | step 707 | 2.3s | 1.9s | 2.0 MB | 514.7 KB | 1000 MB | 642..645 |
+| 1000 | 10^6 | 500 | step 691 | 2.6s | 2.1s | 2.0 MB | 5.1 MB | 1000 MB | 629..632 |
+| 1000 | 10^8 | 500 | step 708 | 36.3s | 13.8s | 8.9 MB | 782.8 MB | 1000 MB | 649..650 |
+| 1000 | 10^9 | 500 | step 691 | 6.5min | 2.6min | 67.0 MB | 1.00 GB* | 1000 MB | 627..633 |
+| 1000 | 10^10 | Running... | Running... | Running... | Running... | Running... | Running... | 3000 MB | Running... |
+
+\* At R=10^9 the cache budget (`--cache-mb 1000`) became binding — 607 cache evictions occurred during reconstruction. Smaller cache budgets would still produce correct results but with more disk re-reads.
+
+**Notes on the columns:**
+- **build peak RSS** is the peak resident set size of the entire process during the build phase, as reported by `/proc/self/status`. This is the dominant memory cost during build.
+- **recon peak cache** is the peak bytes held in the LRU frontier cache during reconstruction, set by `--cache-mb`. The full process RSS during recon is approximately `build peak RSS + recon peak cache` since the cache is the dominant new allocation.
+- **k range found** is the cardinality range of the actual subset solutions recovered by the reconstruction walker (which is biased toward small-k solutions via TAKE-first traversal).
+
+R=10^7 and R=10^10 pending; will be added as those runs complete.
+
 ## Build
 
 Requires GCC and a POSIX-ish system. Tested on Linux and WSL2.
