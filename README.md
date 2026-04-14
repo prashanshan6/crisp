@@ -11,16 +11,19 @@ This is research code from a long-running independent project on subset sum. It 
 All runs use n=1000, k=500 (planted), `--limit 10 --mem 1300 --cache-mb 1000`.
 Run on WSL2 (Ubuntu) on a laptop. Build phase stops via saturation detection.
 
-| n | R | k | T reached | build time | recon time | build peak RSS | recon peak cache | cache max config | k range found |
-|---|---|---|---|---|---|---|---|---|---|
-| 1000 | 10^5 | 500 | step 707 | 3.3s | 2.7s | 2.0 MB | 622.9 KB | 1000 MB | 282..286 |
-| 1000 | 10^6 | 500 | step 691 | 3.8s | 2.9s | 2.0 MB | 6.3 MB | 1000 MB | 293..296 |
-| 1000 | 10^7 | 500 | step 706 | 6.9s | 3.9s | 2.5 MB | 80.9 MB | 1000 MB | 294..298 |
-| 1000 | 10^8 | 500 | step 708 | 42.7s | 18.1s | 9.7 MB | 944.5 MB | 1000 MB | 294..299 |
-| 1000 | 10^9 | 500 | step 691 | 7.5min | 15.6min | 67.7 MB | 2.96 GB | 3000 MB | 294..298 |
-| 1000 | 10^10 | Running... | Running... | Running... | Running... | Running... | Running... | 3000 MB | Running... |
+| n | R | T | k | T reached | build time | recon time | build peak RSS | recon peak cache | cache budget | k range found |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1000 | 10^5  | 25,145,285          | 500 | step 707 | 3.3s    | 2.7s    | 2.0 MB   | 622.9 KB | 1000 MB  | 282..286 |
+| 1000 | 10^6  | 248,345,285         | 500 | step 691 | 3.8s    | 2.9s    | 2.0 MB   | 6.3 MB   | 1000 MB  | 293..296 |
+| 1000 | 10^7  | 2,513,345,285       | 500 | step 706 | 6.9s    | 3.9s    | 2.5 MB   | 80.9 MB  | 1000 MB  | 294..298 |
+| 1000 | 10^8  | 25,173,345,285      | 500 | step 708 | 42.7s   | 18.1s   | 9.7 MB   | 944.5 MB | 1000 MB  | 294..299 |
+| 1000 | 10^9  | 242,673,345,285     | 500 | step 691 | 7.5min  | 15.6min | 67.7 MB  | 2.96 GB  | 3000 MB* | 294..298 |
+| 1000 | 10^10 | 2,440,673,345,285   | 500 | step 710 | 66.1min | 67.9min | 567.9 MB | 3.18 GB  | 3000 MB† | 294..299 |
 
-\* At R=10^9 the cache budget (`--cache-mb 1000`) became binding — 607 cache evictions occurred during reconstruction. Smaller cache budgets would still produce correct results but with more disk re-reads.
+\* R=10^9 was re-run with a 3 GB cache after the default 1 GB cache thrashed during reconstruction (1.6% hit rate, reconstruction incomplete after 6 solutions). The 3 GB cache completed all 10 solutions.
+
+† R=10^10 ran to completion but with a 0% cache hit rate (every frontier access was a disk miss, peak 50/1000 entries resident). A larger cache budget would significantly reduce reconstruction time. The build phase's peak RSS of 567.9 MB occurred mid-build during the densest phase of frontier growth; the final frontier was 62 MB and final RSS was 81 MB. Frontier size was around 101 GB in disk.
+
 
 **Notes on the columns:**
 - **build peak RSS** is the peak resident set size of the entire process during the build phase, as reported by `/proc/self/status`. This is the dominant memory cost during build.

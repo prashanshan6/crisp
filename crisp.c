@@ -1759,8 +1759,6 @@ int main(int argc,char**argv){
         goto recon_phase;
     }
     fwd = ac_new_seeded(search_T, 0);
-    u64 prev_count = fwd.count, prev_pop = fwd.popcount;
-    u64 stable_streak = 0;
     /* Memory band tracking: emit a special log line every time RSS or VmSize
      * crosses a 500 MB boundary, even between scheduled step logs. */
     const u64 MEM_BAND = 500ULL * 1024 * 1024;
@@ -1817,22 +1815,6 @@ int main(int argc,char**argv){
                 fi++;
                 break;
             }
-        }
-        /* Early-stop: if neither count nor popcount changed, remaining items
-         * can't add anything new (clipped to search_T).  Require a short streak
-         * to avoid false-positives from a single lucky item. */
-        if(fwd.count == prev_count && fwd.popcount == prev_pop){
-            stable_streak++;
-            if(stable_streak >= 3){
-                printf("\n  ◆ Saturation at step %d (no new values for %llu steps)\n",
-                    fi+1, (unsigned long long)stable_streak);
-                fi++;
-                break;
-            }
-        } else {
-            stable_streak = 0;
-            prev_count = fwd.count;
-            prev_pop = fwd.popcount;
         }
         u64 mem_mb = rss_now/(1024*1024);
         if((i64)mem_mb > max_mem_mb){ printf("\n  ✗ Memory limit: RSS=%s exceeds %lld MB\n", fmt_bytes(rss_now, mb1), (long long)max_mem_mb); break; }
