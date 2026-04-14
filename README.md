@@ -27,7 +27,7 @@ All runs use n=1000, k=500 (planted), on WSL2 (Ubuntu) on a laptop. The build ph
 
 **Observations from the table:**
 - **k range is stable across all R values.** The walker consistently recovers solutions with k ≈ 294-299 across five orders of magnitude of R, illustrating that the smallest-cardinality subsets summing to T are determined by structural properties of the item set rather than the magnitude of individual items.
-- **Build time scales sub-linearly in T.** From R=10^5 to R=10^10 is a factor of 10^5 in target size, but build time grows only by a factor of ~1200, consistent with the diff-alphabet compression getting more effective at larger frontiers.
+- **Build time is roughly linear in R at the scales tested.** Each 10× in R costs about 9-10× in build time at R ≥ 10^7, reflecting the fact that CRISP is doing work proportional to the frontier size rather than shortcutting it. The algorithm's contribution is not a compute speedup — it is memory compression: the build fits in under 600 MB where a naive bitset would require ~280 GB at R=10^10. A machine with enough RAM to run naive Bellman DP at these scales could match CRISP's build time, but no commodity laptop has that much RAM.
 - **Reconstruction becomes cache-bound at large R.** At R=10^9 and R=10^10, reconstruction throughput depends sensitively on the cache budget relative to total frontier size on disk.
 
 **Notes on the columns:**
