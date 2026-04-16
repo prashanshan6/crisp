@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/c/Users/prash/OneDrive/Documents/projects/**)",
+      "Bash(./crisp --help)",
+      "Bash(python3 adversarial_test.py --items \"3,7,11,15,20,25\" --T 30 --limit 5)",
+      "Bash(python3.exe adversarial_test.py --items \"3,7,11,15,20,25\" --T 30 --limit 5)",
+      "Bash(python adversarial_test.py --items \"3,7,11,15,20,25\" --T 30 --limit 5)",
+      "Bash(wsl.exe python3 *)",
+      "Bash(wsl.exe python *)",
+      "Bash(wsl.exe bash *)",
+      "Bash(python adversarial_test.py --cases random_uniform --n 1000 --R 1000000 --limit 5)",
+      "Bash(rm -f adversarial_results.jsonl adversarial_results_summary.txt)",
+      "Bash(python adversarial_test.py --n 1000 --R 1000000 --limit 5)",
+      "Bash(tee adversarial_test_run.log)",
+      "Bash(python adversarial_test.py --cases \"all_equal,fibonacci_capped\" --n 1000 --R 1000000 --limit 5 --timeout 900)",
+      "Bash(tee adversarial_timeout_rerun.log)",
+      "Bash(python *)",
+      "Bash(tee adversarial_fib_rerun.log)",
+      "Bash(ls ~/OneDrive/Documents/projects/crisp/adversarial*)"
+    ]
+  }
+}
