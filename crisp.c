@@ -1063,12 +1063,16 @@ static void solw_emit_extra(SolWriter *sw, const i64 *values, int k) {
  * largest items first because items are sorted ascending and the walk
  * tries TAKE before SKIP starting from the highest index). */
 static void solw_emit_with_complement(SolWriter *sw, const i64 *taken, int taken_k,
-                                      const i64 *items_sorted, int n) {
-    /* Primary subset — emit to file */
-    solw_emit(sw, taken, taken_k);
+                                      const i64 *items_sorted, int n, int flip) {
+    if (!flip) {
+        /* Normal case: search_T == T, emit the taken subset directly */
+        solw_emit(sw, taken, taken_k);
+        return;
+    }
 
-    /* Build the complement and verify its sum, but do NOT write it to the
-     * output file. The user only wants the primary (search_T-side) subsets. */
+    /* Flipped case: T > total/2, walker found subset summing to search_T.
+     * The complement of that subset sums to T (the user's original target).
+     * Build the complement and emit it instead. */
     i64 taken_sorted[2048];
     int tk = taken_k > 2048 ? 2048 : taken_k;
     for (int i = 0; i < tk; i++) taken_sorted[i] = taken[i];
@@ -1078,24 +1082,23 @@ static void solw_emit_with_complement(SolWriter *sw, const i64 *taken, int taken
         taken_sorted[j] = v;
     }
 
-    /* Two-pointer walk: collect items not in the taken set */
-    i64 comp_sum = 0;
+    /* Two-pointer walk: collect items NOT in the taken set (= complement) */
+    i64 *comp = malloc((n - tk + 1) * sizeof(i64));
     int cn = 0;
     int ti = 0;
     for (int i = 0; i < n; i++) {
         if (ti < tk && items_sorted[i] == taken_sorted[ti]) {
             ti++;
         } else {
-            comp_sum += items_sorted[i];
-            cn++;
+            comp[cn++] = items_sorted[i];
         }
     }
-    /* Verify: primary sum + complement sum should equal total */
-    i64 primary_sum = 0;
-    for (int i = 0; i < taken_k; i++) primary_sum += taken[i];
-    i64 total = primary_sum + comp_sum;
-    (void)total; /* verification — could assert primary_sum + comp_sum == sum(items) */
-    (void)cn;
+    /* Reverse to descending order (matching walker's largest-first convention) */
+    for (int i = 0; i < cn / 2; i++) {
+        i64 tmp = comp[i]; comp[i] = comp[cn - 1 - i]; comp[cn - 1 - i] = tmp;
+    }
+    solw_emit(sw, comp, cn);
+    free(comp);
 }
 
 /* Post-sort the solution file so smallest-k solutions come first.
@@ -1375,6 +1378,7 @@ typedef struct {
     i64 *items;            /* n values, sorted ascending */
     int n;
     i64 search_T;
+    int flipped;           /* 1 if T > total/2, meaning walker found complement-side subsets */
     const char *dir;       /* frontier files directory */
     SolWriter *sw;
     i64 *taken_values;     /* current path of taken item values (stack) */
@@ -1479,7 +1483,7 @@ static void walker_dfs(Walker *w, int start_step, i64 start_target) {
         if (f->step < 0) {
             if (f->target == 0) {
                 solw_emit_with_complement(w->sw, w->taken_values, w->taken_depth,
-                                          w->items, w->n);
+                                          w->items, w->n, w->flipped);
             }
             w->taken_depth -= f->took_count;
             top--;
@@ -1636,6 +1640,7 @@ int main(int argc,char**argv){
     int find_k_arr[256]; int find_k_n=0;
     i64 per_k_limit=-1;
     const char *items_file=NULL;
+    const char *items_inline=NULL;
     const char *recon_from_dir=NULL;
     int stop_on_target=0;
     int random_order=0;
@@ -1650,6 +1655,7 @@ int main(int argc,char**argv){
         else if(!strcmp(argv[i],"--limit"))sol_limit=atoll(argv[++i]);
         else if(!strcmp(argv[i],"--per-k-limit"))per_k_limit=atoll(argv[++i]);
         else if(!strcmp(argv[i],"--items-file"))items_file=argv[++i];
+        else if(!strcmp(argv[i],"--items"))items_inline=argv[++i];
         else if(!strcmp(argv[i],"--cache"))cache_capacity=atoi(argv[++i]);
         else if(!strcmp(argv[i],"--cache-mb"))cache_mb=atoll(argv[++i]);
         else if(!strcmp(argv[i],"--out"))out_path=argv[++i];
@@ -1708,6 +1714,17 @@ int main(int argc,char**argv){
             }
             fclose(fp);
             printf("Loaded %d items from %s\n",n,items_file);
+        } else if(items_inline){
+            /* Parse comma-separated items from --items "v1,v2,v3,..." */
+            int cap=1024; items=malloc(cap*8); n=0;
+            const char *s=items_inline;
+            while(*s){
+                while(*s==' '||*s==','||*s=='\t') s++;
+                if(!*s) break;
+                if(n>=cap){cap*=2;items=realloc(items,cap*8);}
+                items[n++]=strtoll(s,(char**)&s,10);
+            }
+            printf("Loaded %d items from --items\n",n);
         } else {
             items=malloc(n*8);
             for(int i=0;i<n;i++)items[i]=rng(R);
@@ -1739,6 +1756,7 @@ int main(int argc,char**argv){
     char mb1[32],mb2[32];
     printf("CRISP v24 (single-pass Huffman, recon)\n");
     printf("n=%d R=%lld T=%lld search_T=%lld\n",n,(long long)R,(long long)T,(long long)search_T);
+    if(search_T != T) printf("  note: T > total/2, searching for complement (total-T=%lld). Solutions will be flipped to sum to T.\n",(long long)search_T);
     printf("bitset equiv = %s\n",fmt_bytes(search_T/8+1,mb1));
     printf("memory limit: %lld MB\n", (long long)max_mem_mb);
     if(do_recon) printf("reconstruction enabled: --limit=%lld --out=%s\n",(long long)sol_limit,out_path);
@@ -2110,6 +2128,7 @@ recon_phase:
             w.items = items;
             w.n = n;
             w.search_T = search_T;
+            w.flipped = (search_T != T) ? 1 : 0;
             w.dir = run_dir;
             w.sw = &sw;
             w.taken_values = malloc(n * sizeof(i64));
