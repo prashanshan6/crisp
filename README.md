@@ -61,6 +61,8 @@ This will:
 
 This instance finishes in about a minute. For larger instances (R up to 10^10), see the Benchmarks section above for expected times and memory footprints.
 
+When T > total/2, CRISP internally searches for the smaller complement target (total − T) and automatically flips the output so that solutions always sum to the user's original T. A note is printed when this happens.
+
 ## Resuming reconstruction
 
 Frontiers from previous runs are preserved on disk. You can re-run reconstruction against them without rebuilding:
@@ -100,6 +102,8 @@ Concatenating the outputs gives a diverse pool. A single run with `--random-orde
                      --random-order traversal.
 --items-file PATH    Use a specific list of items instead of generating
                      them randomly. One item per line.
+--items "v1,v2,..."  Pass items directly as a comma-separated string.
+                     Overrides --n (item count is inferred from the list).
 
 --recon              Enable reconstruction after build. Saves per-step
                      frontiers to disk and walks them backward to find
@@ -149,9 +153,13 @@ At the benchmarked scale (n=1000, R up to 10^10), the current bottlenecks are:
 
 Memory for the build phase is *not* a bottleneck at the scales tested — build peak RSS stays under 600 MB at R=10^10. The algorithm's scaling limit on commodity hardware is set by disk and cache, not by build memory.
 
+- **Duplicate-heavy item sets.** When many items share the same value, the walker may find many subsets that are distinct by item index but identical by value. A circuit breaker stops reconstruction after 10,000 consecutive duplicate solutions and reports the search space as exhausted. This correctly handles pathological cases like all-equal items (where only one unique solution exists regardless of how many index-distinct subsets sum to T).
+
 ## Status
 
-Research code. The algorithm has been developed and refined over a long period as an independent project. The current implementation has been tested across a range of n and R values and has produced verified exact subset solutions for instances at n=1000, R=10^10. It has not been peer-reviewed and the empirical scaling claims have not been independently replicated.
+Research code. The algorithm has been developed and refined over a long period as an independent project. The current implementation has been tested across a range of n and R values and has produced verified exact subset solutions for instances at n=1000, R=10^10. It has also been tested against 17 adversarial input distributions (arithmetic progressions, geometric sequences, prime-only sets, Fibonacci-capped, super-increasing resets, all-equal items, bimodal clusters, large-GCD sets, near-max/near-one clustered, and others) — all solutions verified correct, no crashes, no incorrect answers. The solver correctly identifies when no solution exists (e.g., target not divisible by item GCD) and when the search space is exhausted of unique solutions.
+
+It has not been peer-reviewed and the empirical scaling claims have not been independently replicated.
 
 Bug reports and questions welcome via GitHub issues. Contributions welcome but please open an issue first to discuss before sending a pull request, especially for non-trivial changes.
 

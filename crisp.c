@@ -923,6 +923,8 @@ typedef struct {
     u64 *find_k_found;    /* per-k solution count, parallel to find_k */
     u8 *seen_k_one;       /* seen_k_one[k] != 0 means one rep was already emitted */
     int seen_k_one_cap;
+    u64 dedup_streak;     /* consecutive dedup rejections without a new unique solution */
+    int exhausted;        /* set to 1 when dedup_streak exceeds threshold */
 } SolWriter;
 
 static void solw_init(SolWriter *sw, const char *path, u64 limit) {
@@ -938,6 +940,8 @@ static void solw_init(SolWriter *sw, const char *path, u64 limit) {
     sw->find_k_found = NULL;
     sw->seen_k_one = NULL;
     sw->seen_k_one_cap = 0;
+    sw->dedup_streak = 0;
+    sw->exhausted = 0;
 }
 /* Configure --find-k mode. Pass an array of requested ks and the max
  * possible k (= n). Allocates internal tracking. */
@@ -1000,7 +1004,20 @@ static void solw_emit(SolWriter *sw, const i64 *values, int k) {
         if (i + 1 < k) line[pos++] = ',';
     }
     line[pos] = 0;
-    if (!ss_add(&sw->seen, line)) return; /* already emitted */
+    if (!ss_add(&sw->seen, line)) {
+        /* Duplicate solution — increment streak counter */
+        sw->dedup_streak++;
+        if (sw->dedup_streak >= 10000) {
+            if (!sw->exhausted) {
+                printf("  ⚠ %llu consecutive duplicate solutions — search space exhausted for unique solutions\n",
+                    (unsigned long long)sw->dedup_streak);
+                fflush(stdout);
+            }
+            sw->exhausted = 1;
+        }
+        return;
+    }
+    sw->dedup_streak = 0;  /* reset on successful emit */
     fputs(line, sw->fp); fputc('\n', sw->fp);
     sw->count++;
     if (k < sw->min_k_seen) sw->min_k_seen = k;
@@ -1467,7 +1484,9 @@ static void walker_dfs(Walker *w, int start_step, i64 start_target) {
 
     while (top >= 0) {
         /* Termination: in find-k mode, stop when every requested k has reached
-         * the per-k cap (sw->per_k_limit). Otherwise, stop at --limit total. */
+         * the per-k cap (sw->per_k_limit). Otherwise, stop at --limit total.
+         * Also stop if the search space is exhausted of unique solutions. */
+        if (w->sw->exhausted) break;
         if (w->sw->find_k_n > 0) {
             int all_capped = 1;
             for (int i = 0; i < w->sw->find_k_n; i++) {
